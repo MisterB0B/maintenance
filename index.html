@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maintenance Tracker | The Light Park</title>
+  <style>
+    :root {
+      --bg: #0B0D14;
+      --surface: #12151F;
+      --surface2: #1a1e2e;
+      --border: #2a2f42;
+      --text: #f0f0f5;
+      --text-dim: #8888a0;
+      --purple: #a855f7;
+      --teal: #06d6a0;
+      --pink: #ff4fd8;
+      --green: #22c55e;
+      --orange: #f97316;
+      --blue: #3b82f6;
+      --red: #ef4444;
+      --yellow: #eab308;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header h1 { font-size: 22px; font-weight: 800; }
+    .btn {
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      font-size: 14px;
+    }
+    .btn-primary { background: var(--purple); color: white; }
+    .btn-secondary { background: var(--surface2); border: 1px solid var(--border); color: var(--text); }
+    
+    .container { padding: 20px; }
+    
+    /* Stats */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    .stat-value { font-size: 36px; font-weight: 800; }
+    .stat-label { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+    .stat-open .stat-value { color: var(--red); }
+    .stat-progress .stat-value { color: var(--orange); }
+    .stat-parts .stat-value { color: var(--yellow); }
+    .stat-resolved .stat-value { color: var(--green); }
+    
+    /* Filters */
+    .filters {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .filters select, .filters input {
+      padding: 10px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 14px;
+    }
+    .filters input { flex: 1; min-width: 200px; }
+    
+    /* Tickets List */
+    .tickets-list { display: flex; flex-direction: column; gap: 12px; }
+    
+    .ticket-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 16px;
+      align-items: center;
+    }
+    .ticket-card:hover { border-color: var(--purple); }
+    
+    .ticket-priority {
+      width: 8px;
+      height: 60px;
+      border-radius: 4px;
+    }
+    .priority-high { background: var(--red); }
+    .priority-medium { background: var(--orange); }
+    .priority-low { background: var(--yellow); }
+    
+    .ticket-info { flex: 1; }
+    .ticket-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+    .ticket-meta { font-size: 12px; color: var(--text-dim); display: flex; gap: 16px; flex-wrap: wrap; }
+    .ticket-desc {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-top: 8px;
+      padding: 8px 12px;
+      background: var(--surface2);
+      border-radius: 6px;
+    }
+    
+    .ticket-status { text-align: right; }
+    .status-badge {
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+    .status-open { background: rgba(239,68,68,0.2); color: var(--red); }
+    .status-progress { background: rgba(249,115,22,0.2); color: var(--orange); }
+    .status-parts { background: rgba(234,179,8,0.2); color: var(--yellow); }
+    .status-resolved { background: rgba(34,197,94,0.2); color: var(--green); }
+    
+    .ticket-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .ticket-btn {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text-dim);
+    }
+    .ticket-btn:hover { border-color: var(--purple); color: var(--text); }
+    
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+    .modal.show { display: flex; }
+    .modal-content {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      width: 100%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-title { font-size: 20px; font-weight: 700; margin-bottom: 20px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 6px; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%;
+      padding: 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 14px;
+    }
+    .form-group textarea { min-height: 80px; resize: vertical; }
+    .modal-actions { display: flex; gap: 12px; margin-top: 20px; }
+    .modal-actions .btn { flex: 1; }
+    
+    @media (max-width: 768px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .ticket-card { grid-template-columns: auto 1fr; }
+      .ticket-status { grid-column: 2; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🔧 Maintenance Tracker</h1>
+    <button class="btn btn-primary" onclick="openModal()">➕ New Ticket</button>
+  </div>
+  
+  <div class="container">
+    <div class="stats-row">
+      <div class="stat-card stat-open">
+        <div class="stat-value" id="statOpen">5</div>
+        <div class="stat-label">Open</div>
+      </div>
+      <div class="stat-card stat-progress">
+        <div class="stat-value" id="statProgress">3</div>
+        <div class="stat-label">In Progress</div>
+      </div>
+      <div class="stat-card stat-parts">
+        <div class="stat-value" id="statParts">2</div>
+        <div class="stat-label">Waiting Parts</div>
+      </div>
+      <div class="stat-card stat-resolved">
+        <div class="stat-value" id="statResolved">24</div>
+        <div class="stat-label">Resolved (This Week)</div>
+      </div>
+    </div>
+    
+    <div class="filters">
+      <input type="text" placeholder="Search props..." id="searchInput">
+      <select id="filterStatus">
+        <option value="">All Status</option>
+        <option value="open">Open</option>
+        <option value="progress">In Progress</option>
+        <option value="parts">Waiting Parts</option>
+        <option value="resolved">Resolved</option>
+      </select>
+      <select id="filterVenue">
+        <option value="">All Venues</option>
+        <option value="katy">Katy</option>
+        <option value="spring">Spring</option>
+        <option value="selma">Selma</option>
+        <option value="missions">Missions</option>
+        <option value="arlington">Arlington</option>
+        <option value="frisco">Frisco</option>
+        <option value="round-rock">Round Rock</option>
+        <option value="okc">Oklahoma City</option>
+      </select>
+      <select id="filterPriority">
+        <option value="">All Priority</option>
+        <option value="high">🔴 High</option>
+        <option value="medium">🟠 Medium</option>
+        <option value="low">🟡 Low</option>
+      </select>
+    </div>
+    
+    <div class="tickets-list" id="ticketsList">
+      <!-- Ticket 1 -->
+      <div class="ticket-card">
+        <div class="ticket-priority priority-high"></div>
+        <div class="ticket-info">
+          <div class="ticket-title">Gnome B #7 — Controller Failure</div>
+          <div class="ticket-meta">
+            <span>📍 Katy</span>
+            <span>⏰ 2h ago</span>
+            <span>👤 Eddie M.</span>
+          </div>
+          <div class="ticket-desc">Controller not responding. LED status light off. Power confirmed OK. Need replacement FPP unit.</div>
+        </div>
+        <div class="ticket-status">
+          <div class="status-badge status-progress">In Progress</div>
+          <div class="ticket-actions">
+            <button class="ticket-btn" onclick="updateTicket(1)">Update</button>
+            <button class="ticket-btn" onclick="resolveTicket(1)">Resolve</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Ticket 2 -->
+      <div class="ticket-card">
+        <div class="ticket-priority priority-high"></div>
+        <div class="ticket-info">
+          <div class="ticket-title">RGB Tunnel Section 3 — Dead Pixels</div>
+          <div class="ticket-meta">
+            <span>📍 Spring</span>
+            <span>⏰ 5h ago</span>
+            <span>👤 Jake T.</span>
+          </div>
+          <div class="ticket-desc">~20 dead pixels in middle section. Likely water damage from yesterday's rain. Need replacement string.</div>
+        </div>
+        <div class="ticket-status">
+          <div class="status-badge status-parts">Waiting Parts</div>
+          <div class="ticket-actions">
+            <button class="ticket-btn" onclick="updateTicket(2)">Update</button>
+            <button class="ticket-btn" onclick="resolveTicket(2)">Resolve</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Ticket 3 -->
+      <div class="ticket-card">
+        <div class="ticket-priority priority-medium"></div>
+        <div class="ticket-info">
+          <div class="ticket-title">Reindeer C #3 — Weak WiFi Signal</div>
+          <div class="ticket-meta">
+            <span>📍 Katy</span>
+            <span>⏰ 1d ago</span>
+            <span>👤 Unassigned</span>
+          </div>
+          <div class="ticket-desc">Intermittent sync drops during show. Signal strength ~40%. May need external antenna or AP adjustment.</div>
+        </div>
+        <div class="ticket-status">
+          <div class="status-badge status-open">Open</div>
+          <div class="ticket-actions">
+            <button class="ticket-btn" onclick="assignTicket(3)">Assign</button>
+            <button class="ticket-btn" onclick="updateTicket(3)">Update</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Ticket 4 -->
+      <div class="ticket-card">
+        <div class="ticket-priority priority-low"></div>
+        <div class="ticket-info">
+          <div class="ticket-title">Gift Box Array — Loose Connection</div>
+          <div class="ticket-meta">
+            <span>📍 Selma</span>
+            <span>⏰ 2d ago</span>
+            <span>👤 Chris M.</span>
+          </div>
+          <div class="ticket-desc">Occasional flicker on box #4. Likely loose data connector. Low priority — not visible during normal show.</div>
+        </div>
+        <div class="ticket-status">
+          <div class="status-badge status-open">Open</div>
+          <div class="ticket-actions">
+            <button class="ticket-btn" onclick="updateTicket(4)">Update</button>
+            <button class="ticket-btn" onclick="resolveTicket(4)">Resolve</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Resolved Ticket -->
+      <div class="ticket-card" style="opacity: 0.7;">
+        <div class="ticket-priority" style="background: var(--green);"></div>
+        <div class="ticket-info">
+          <div class="ticket-title">Mega Tree — Power Supply Replacement</div>
+          <div class="ticket-meta">
+            <span>📍 Katy</span>
+            <span>⏰ Resolved 3h ago</span>
+            <span>👤 Eddie M.</span>
+          </div>
+          <div class="ticket-desc">350W PSU failed. Replaced with spare. Back online and tested OK.</div>
+        </div>
+        <div class="ticket-status">
+          <div class="status-badge status-resolved">✓ Resolved</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- New Ticket Modal -->
+  <div class="modal" id="newTicketModal">
+    <div class="modal-content">
+      <div class="modal-title">➕ New Maintenance Ticket</div>
+      
+      <div class="form-group">
+        <label>Prop Name / Location *</label>
+        <input type="text" id="propName" placeholder="e.g., Gnome B #7, RGB Tunnel Section 3">
+      </div>
+      
+      <div class="form-group">
+        <label>Venue *</label>
+        <select id="ticketVenue">
+          <option value="">Select venue...</option>
+          <option value="katy">Katy</option>
+          <option value="spring">Spring</option>
+          <option value="selma">Selma</option>
+          <option value="missions">Missions</option>
+          <option value="arlington">Arlington</option>
+          <option value="frisco">Frisco</option>
+          <option value="round-rock">Round Rock</option>
+          <option value="okc">Oklahoma City</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label>Priority *</label>
+        <select id="ticketPriority">
+          <option value="high">🔴 High — Show-stopping issue</option>
+          <option value="medium" selected>🟠 Medium — Visible but not critical</option>
+          <option value="low">🟡 Low — Minor / cosmetic</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label>Issue Description *</label>
+        <textarea id="ticketDesc" placeholder="Describe the problem, symptoms, and any troubleshooting already tried..."></textarea>
+      </div>
+      
+      <div class="form-group">
+        <label>Assign To</label>
+        <select id="ticketAssign">
+          <option value="">Unassigned</option>
+          <option value="eddie">Eddie M.</option>
+          <option value="jake">Jake T.</option>
+          <option value="chris">Chris M.</option>
+          <option value="mike">Mike R.</option>
+        </select>
+      </div>
+      
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="createTicket()">Create Ticket</button>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    function openModal() {
+      document.getElementById('newTicketModal').classList.add('show');
+    }
+    
+    function closeModal() {
+      document.getElementById('newTicketModal').classList.remove('show');
+    }
+    
+    function createTicket() {
+      const prop = document.getElementById('propName').value.trim();
+      const venue = document.getElementById('ticketVenue').value;
+      const priority = document.getElementById('ticketPriority').value;
+      const desc = document.getElementById('ticketDesc').value.trim();
+      
+      if (!prop || !venue || !desc) {
+        alert('Please fill in all required fields');
+        return;
+      }
+      
+      alert(`✅ Ticket Created!\n\nProp: ${prop}\nVenue: ${venue}\nPriority: ${priority}\n\nThe ticket has been added and will appear in the list.`);
+      closeModal();
+      
+      // Clear form
+      document.getElementById('propName').value = '';
+      document.getElementById('ticketDesc').value = '';
+    }
+    
+    function updateTicket(id) {
+      const note = prompt('Add update note:');
+      if (note) {
+        alert(`Update added to ticket #${id}:\n\n"${note}"`);
+      }
+    }
+    
+    function resolveTicket(id) {
+      if (confirm('Mark this ticket as resolved?')) {
+        alert(`Ticket #${id} marked as resolved!`);
+      }
+    }
+    
+    function assignTicket(id) {
+      const tech = prompt('Assign to (enter name):');
+      if (tech) {
+        alert(`Ticket #${id} assigned to ${tech}`);
+      }
+    }
+    
+    // Close modal on outside click
+    document.getElementById('newTicketModal').addEventListener('click', (e) => {
+      if (e.target.id === 'newTicketModal') closeModal();
+    });
+  </script>
+</body>
+</html>
