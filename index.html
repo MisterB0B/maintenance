@@ -3,7 +3,66 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <title>Maintenance Tracker | The Light Park</title>
+  
+  <!-- Supabase Cloud Sync -->
+  <script>
+    const SUPABASE_URL = 'https://gwjtfcrgpxclixonogpe.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3anRmY3JncHhjbGl4b25vZ3BlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzMzQzOTUsImV4cCI6MjA4NTkxMDM5NX0.qM1-_VA1Dsx_nsWkeoAJvNWNgSuuwApPBGoJU32X3-I';
+    const APP_NAME = 'maintenance_tracker';
+    
+    window.CloudSync = {
+      online: navigator.onLine,
+      async save(key, data) {
+        if (!this.online) return { synced: false };
+        try {
+          const existing = await fetch(
+            `${SUPABASE_URL}/rest/v1/app_data?app_data=eq.${APP_NAME}&data_key=eq.${key}&select=id`,
+            { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }}
+          ).then(r => r.json());
+          
+          const method = existing.length > 0 ? 'PATCH' : 'POST';
+          const url = existing.length > 0 
+            ? `${SUPABASE_URL}/rest/v1/app_data?id=eq.${existing[0].id}`
+            : `${SUPABASE_URL}/rest/v1/app_data`;
+          const body = existing.length > 0 
+            ? { data, created_at: new Date().toISOString() }
+            : { app_data: APP_NAME, data_key: key, data };
+          
+          await fetch(url, {
+            method,
+            headers: {
+              'apikey': SUPABASE_KEY,
+              'Authorization': `Bearer ${SUPABASE_KEY}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify(body)
+          });
+          return { synced: true };
+        } catch (err) {
+          console.error('[CloudSync] Save failed:', err);
+          return { synced: false };
+        }
+      },
+      async load(key) {
+        if (!this.online) return null;
+        try {
+          const result = await fetch(
+            `${SUPABASE_URL}/rest/v1/app_data?app_data=eq.${APP_NAME}&data_key=eq.${key}&select=data`,
+            { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }}
+          ).then(r => r.json());
+          return result.length > 0 ? result[0].data : null;
+        } catch (err) {
+          return null;
+        }
+      }
+    };
+    window.addEventListener('online', () => CloudSync.online = true);
+    window.addEventListener('offline', () => CloudSync.online = false);
+  </script>
+  
   <style>
     :root {
       --bg: #0B0D14;
